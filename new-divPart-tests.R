@@ -19,7 +19,8 @@ newResnp <- divPartNew(infile = "tst-files/KK_test.gen",
 system.time({
 newResp <- divPartNew(infile = "tst-files/KK_test.gen",
                      outfile = "tst-files/New-para",
-                     parallel = TRUE, bs_locus = TRUE,
+                     parallel = FALSE, bs_locus = FALSE,
                      bs_pairwise = TRUE, pairwise = TRUE,
-                     WC_Fst = TRUE, bootstraps = 10, plot = TRUE)
+                     WC_Fst = TRUE, bootstraps = 5, plot = TRUE)
 })
+

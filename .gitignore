@@ -6,3 +6,8 @@ man/
 inst/
 data/
 *.Rproj
+*.html
+*.md
+tst-files/
+figure/
+cache/
