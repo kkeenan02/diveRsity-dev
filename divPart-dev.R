@@ -4,11 +4,12 @@
 # Kevin Keenan 2013
 
 # divPart, a wrapper function for the calculation of differentiation stats.
-divPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
+divPartNew<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
                   WC_Fst = FALSE, bs_locus = FALSE, bs_pairwise = FALSE, 
                   bootstraps = 0, plot = FALSE, parallel = FALSE){
   
   ############################ Argument definitions ############################
+  # define arguments for testing
   D <- infile
   on <- outfile
   gp <- gp
@@ -608,443 +609,261 @@ divPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
     ################################## Pairwise ################################
     ############################################################################
     # population pair combinations
+    # working well 24/10/13
     if(pWise || bspw){
-      pw <- combn(accDat$npops,2)
-      pwmat <- pw + 1
-      #pw data creator
-      ind_vectors <- lapply(1:accDat$npops, function(x){
-        rep(x, accDat$pop_sizes[[x]])}
-      )
-      #      
-      pre_data <- matrix(rep("", ((accDat$nloci + 1) * (accDat$nloci + 1))),
-                         ncol = (accDat$nloci + 1))
-      pre_data[1,] <- rep("", (accDat$nloci + 1))
-      #
-      for(i in 2:(accDat$nloci + 1)){
-        pre_data[i, 1] <- accDat$locus_names[(i-1)]
-      }
-      #
-      pw_data<-list()
-      for (i in 1:ncol(pw)){
-        pw_data[[i]]<-data.frame(rbind(pre_data,
-                                       c("POP",as.vector(rep("",accDat$nloci))),
-                                       cbind(ind_vectors[[pw[1,i]]],
-                                             matrix(noquote(accDat$pop_list
-                                                            [[pw[1,i]]]),
-                                                    ncol=accDat$nloci)),
-                                       c("POP",as.vector(rep("",accDat$nloci))),
-                                       cbind(ind_vectors[[pw[2,i]]],
-                                             matrix(noquote(accDat$pop_list
-                                                            [[pw[2,i]]]),
-                                                    ncol=accDat$nloci))))
-      }
-      true_stat_gp_in <- list()
-      if(fst == TRUE){
-        pw_glb <- matrix(rep(0, (8 * (ncol(pw)))), ncol = 8)
-      } else {
-        pw_glb <- matrix(rep(0, (6 * (ncol(pw)))), ncol = 6)
-      }
-      for (i in 1:ncol(pw)){
-        true_stat_gp_in[[i]] <- list(infile = pw_data[[i]],
-                                     gp = gp, bootstrap = FALSE,
-                                     locs = FALSE, fst = fst)
-      }
-      if (para && para_pack) {
-        
-        true_stat <- parLapply(cl, true_stat_gp_in, pre.divLowMemory)
-        # close core connections if not needed further
-        if (bspw == FALSE){
-          stopCluster(cl)
-        }
-      } else {
-        true_stat <- lapply(true_stat_gp_in, pre.divLowMemory)
-      }
-      for(i in 1:ncol(pw)){
-        if(fst==TRUE){
-          pw_glb[i,]<-c(true_stat[[i]]$gst_all,true_stat[[i]]$gst_all_hedrick,
-                        true_stat[[i]]$djost_all,true_stat[[i]]$gst_est_all,
-                        true_stat[[i]]$gst_est_all_hedrick,
-                        true_stat[[i]]$djost_est_all,
-                        as.numeric(true_stat[[i]]$fstat[2:3]))
-        } else {
-          pw_glb[i,]<-c(true_stat[[i]]$gst_all,true_stat[[i]]$gst_all_hedrick,
-                        true_stat[[i]]$djost_all,true_stat[[i]]$gst_est_all,
-                        true_stat[[i]]$gst_est_all_hedrick,
-                        true_stat[[i]]$djost_est_all)
-        }
-      }
-      if(fst==TRUE){
-        pwMatList <- lapply(1:8, function(x){
-          matrix(rep("--", ((accDat$npops+1) ^ 2)), 
-                 ncol = (accDat$npops + 1),
-                 nrow = (accDat$npops + 1))
-        })
-      } else {
-        pwMatList <- lapply(1:6, function(x){
-          matrix(rep("--", ((accDat$npops+1)^2)),
-                 ncol = (accDat$npops + 1),
-                 nrow = (accDat$npops + 1))
-        })
-      }
-      if(fst==TRUE){
-        pwMatListOut <- lapply(1:8, function(x){
-          matrix(rep(NA, ((accDat$npops)^2)),
-                 ncol = (accDat$npops),
-                 nrow = (accDat$npops))
-        })
-      } else {
-        pwMatListOut <- lapply(1:6, function(x){
-          matrix(rep(NA,((accDat$npops)^2)),
-                 ncol = (accDat$npops),
-                 nrow = (accDat$npops))
-        })
-      }
-      names(pwMatList) <- namer
-      names(pwMatListOut) <- namer
-      #write pw res to matrices
-      pnames <- c("", accDat$pop_names)
-      pnamesOut <- accDat$pop_names
-      if(fst==TRUE){
-        for(i in 1:8){
-          for(j in 1:ncol(pw)){
-            pwMatList[[i]][pwmat[2, j], pwmat[1, j]] <- pw_glb[j, i]
-            pwMatList[[i]][pwmat[1, j], pwmat[2, j]] <- ""
-            pwMatListOut[[i]][pw[2, j], pw[1, j]] <- pw_glb[j, i]
-            #pwMatListOut[[i]][pw[1,j],pw[2,j]]<-""
-          }
-          pwMatList[[i]][1, ] <- pnames
-          pwMatList[[i]][, 1] <- pnames
-          dimnames(pwMatListOut[[i]]) <- list(pnamesOut, pnamesOut)
-        }
-      } else {
-        for(i in 1:6){
-          for(j in 1:ncol(pw)){
-            pwMatList[[i]][pwmat[2, j], pwmat[1, j]] <- pw_glb[j, i]
-            pwMatList[[i]][pwmat[1, j], pwmat[2, j]] <- ""
-            pwMatListOut[[i]][pw[2, j], pw[1, j]] <- pw_glb[j, i]
-            #pwMatListOut[[i]][pw[1,j],pw[2,j]]<-""
-          }
-          pwMatList[[i]][1, ] <- pnames
-          pwMatList[[i]][, 1] <- pnames
-          dimnames(pwMatListOut[[i]]) <- list(pnamesOut, pnamesOut)
-        }
-      }
+      # get pw names
+      pw <- combn(accDat$npops, 2)
+      popNms <- accDat$pop_names
+      # for pw bootstrap table
+      pw_nms <- paste(popNms[pw[1,]], popNms[pw[2,]], sep = " vs. ")
       
-      
-      # write object create
-      #pnames list
-      
-      pwWrite <- pwMatList[[1]]
-      pwWrite <- rbind(c(names(pwMatList)[1], rep("", accDat$npops)), pwWrite,
-                       rep("", (accDat$npops + 1)))
-      if(fst==TRUE){
-        for(i in 2:8){
-          pwWrite <- rbind(pwWrite, c(names(pwMatList)[i],
-                                      rep("", accDat$npops)),
-                           pwMatList[[i]], rep("", (accDat$npops + 1)))
-        }
+      pwStats <- pwCalc(D, fst, bs = FALSE)
+      # extract stats
+      gstPW <- pwStats[,,1]
+      gstHPW <- pwStats[,,2]
+      dPW <- pwStats[,,3]
+      if(fst){
+        thetaPW <- pwStats[,,4]
+      }
+      # clean up
+      rm(pwStats)
+      z <- gc()
+      rm(z)
+      spc1 <- rep("", ncol(gstPW))
+      if(fst){
+        statNms <- c("Gst_est", "G'st_est", "Djost_est", "Fst_WC")
+        outobj <- rbind(c(statNms[1], spc1), 
+                        c("", popNms),
+                        cbind(popNms, round(gstPW, 4)),
+                        c(statNms[2], spc1),
+                        c("", popNms),
+                        cbind(popNms, round(gstHPW, 4)), 
+                        c(statNms[3], spc1),
+                        c("", popNms),
+                        cbind(popNms, round(dPW, 4)), 
+                        c(statNms[4], spc1),
+                        c("", popNms),
+                        cbind(popNms, round(thetaPW, 4)))
+        outobj[is.na(outobj)] <- ""
+        pwMatListOut <- list(gstPW, gstHPW, dPW, thetaPW)
+        # tidy up
+        rm(gstPW, gstHPW, dPW, thetaPW)
+        z <- gc()
+        rm(z)
       } else {
-        for(i in 2:6){
-          pwWrite <- rbind(pwWrite, c(names(pwMatList)[i],
-                                      rep("",accDat$npops)),
-                           pwMatList[[i]], rep("",(accDat$npops+1)))
-        }
+        statNms <- c("Gst_est", "G'st_est", "Djost_est")
+        outobj <- rbind(c(statNms[1], spc1), 
+                        c("", popNms),
+                        cbind(popNms, round(gstPW, 4)),
+                        c(statNms[2], spc1),
+                        c("", popNms),
+                        cbind(popNms, round(gstHPW, 4)), 
+                        c(statNms[3], spc1),
+                        c("", popNms),
+                        cbind(popNms, round(dPW, 4)))
+        outobj[is.na(outobj)] <- ""
+        pwMatListOut <- list(gstPW, gstHPW, dPW)
+        # tidy up
+        rm(gstPW, gstHPW, dPW, thetaPW)
+        z <- gc()
+        rm(gc)
       }
       if(!is.null(on)){
         if(write_res == TRUE){
           # write data to excel
           # Load dependencies
           # pw stats
-          write.xlsx(pwWrite,file=paste(of,"[divPart].xlsx",sep=""),
-                     sheetName="Pairwise-stats",col.names=F,
-                     row.names=F,append=T)
+          write.xlsx(outobj, file = paste(of, "[divPart].xlsx", sep=""),
+                     sheetName = "Pairwise-stats", col.names = FALSE,
+                     row.names = FALSE, append = TRUE)
         } else {
           # text file alternatives
-          pw_outer<-file(paste(of,"Pairwise-stats[divPart].txt",sep=""), "w")
-          for(i in 1:nrow(pwWrite)){
-            cat(pwWrite[i,],"\n",file=pw_outer,sep="\t")
+          pw_outer <- file(paste(of, "Pairwise-stats[divPart].txt", sep=""), "w")
+          for(i in 1:nrow(outobj)){
+            cat(outobj[i,], "\n", file = pw_outer, sep = "\t")
           }
           close(std)
         }
       }
-      #cleanup
-      rm("pwWrite")
-      ##
-      zzz<-gc()
-      rm(zzz)
     }
-    
     
     #Bootstrap
     if(bspw == TRUE){
-      
-      
-      # Bootstrap results data object 
-      # bs_pw_glb = bootstrap pairwise global stats
-      #if(fst == TRUE){
-      #  bs_pw_glb <- matrix(rep(0, (8*bstrps)), ncol = 8, nrow = bstrps)
-      #} else {
-      #  bs_pw_glb <- matrix(rep(0, (6*bstrps)), ncol = 6, nrow = bstrps)
-      #}
-      # output results data object
-      # pw_res = pairwise results
-      if(fst==TRUE){
-        pw_res <- lapply(1:8, function(x){
-          matrix(nrow = ncol(pw), ncol = 3)
-        })
-      } else {
-        pw_res <- lapply(1:6, function(x){
-          matrix(nrow = ncol(pw), ncol = 3)
-        })
-      }
-      #
-      #
-      
-      #parallel processing option
       if (para && para_pack) {
-        #create a readGenepopX list
-        bs_pw_glb<-list()
-        data_res<-list()
-        bs_pw_para<-list()
-        for(i in 1:ncol(pw)){
-          input <- list(infile = pw_data[[i]], gp = gp, bootstrap = TRUE,
-                        locs = FALSE, fst = fst)
-          # silence for memory efficiency
-          #pw_inlist<-list()
-          #for(j in 1:bstrps){
-          #  pw_inlist[[j]] <- input
-          #}
-          if(fst == TRUE){
-            bs_pw_glb[[i]] <- matrix(rep(0, (8*bstrps)), ncol = 8,
-                                     nrow = bstrps)
-          } else {
-            bs_pw_glb[[i]] <- matrix(rep(0, (6*bstrps)), ncol = 6, 
-                                     nrow = bstrps)
-          }
-          clusterExport(cl, c("input", "pre.divLowMemory"),
-                        envir = environment())
-          bs_pw_para <- parLapply(cl, 1:bstrps, function(...){
-            pre.divLowMemory(input)
-          })
-          for(j in 1:bstrps){
-            if(fst == TRUE){
-              bs_pw_glb[[i]][j,] <- c(bs_pw_para[[j]]$gst_all,
-                                      bs_pw_para[[j]]$gst_all_hedrick,
-                                      bs_pw_para[[j]]$djost_all,
-                                      bs_pw_para[[j]]$gst_est_all,
-                                      bs_pw_para[[j]]$gst_est_all_hedrick,
-                                      bs_pw_para[[j]]$djost_est_all,
-                                      as.numeric(bs_pw_para[[j]]$fstats[2:3]))
-            } else {
-              bs_pw_glb[[i]][j,] <- c(bs_pw_para[[j]]$gst_all,
-                                      bs_pw_para[[j]]$gst_all_hedrick,
-                                      bs_pw_para[[j]]$djost_all,
-                                      bs_pw_para[[j]]$gst_est_all,
-                                      bs_pw_para[[j]]$gst_est_all_hedrick,
-                                      bs_pw_para[[j]]$djost_est_all)
-              
-            }
-          }
-        }
-        #
-        # confidence interval calculator function
-        pwCi <- lapply(bs_pw_glb, function(x){
-          res <- apply(x, 2, function(y){
-            ci <- as.vector(quantile(y, probs = c(0.025, 0.975), na.rm = TRUE))
-            means <- mean(y, na.rm = TRUE)
-            return(c(means, ci))
-          })
-          mu <- res[1,]
-          lci <- res[2,]
-          uci <- res[3,]
-          list(mu = mu, lci = lci, uci = uci)
+        library(parallel)
+        cl <- makeCluster(detectCores())
+        clusterExport(cl, c("pwCalc", "bs = TRUE", "fst", "D"))
+        pwBsStat <- parLapply(cl, 1:bstrps, function(...){
+          return(pwCalc(infile, fst, bs))
         })
-        # create easy access data structure for each
-        mu <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$mu)
-        }))
-        lci <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$lci)
-        }))
-        uci <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$uci)
-        }))
-        
-        for(i in 1:ncol(pw)){
-          for(j in 1:ncol(mu)){
-            pw_res[[j]][i, 1] <- round(mu[i, j], 4)
-            pw_res[[j]][i, 2] <- round(lci[i, j], 4)
-            pw_res[[j]][i, 3] <- round(uci[i, j], 4)
-            pw_res[[j]][is.na(pw_res[[j]])] <- 0
-          }
-        }
         stopCluster(cl)
       } else {
-        #sequential vectorized
-        #pw_inlist<-list()
-        #for(i in 1:ncol(pw)){
-        #  input <- list(infile = pw_data[[i]],
-        #                gp = gp, bootstrap = TRUE, 
-        #                locs = FALSE, fst = fst)
-        #  pw_inlist[[i]] <- list()
-        #  for(j in 1:bstrps){
-        #    pw_inlist[[i]][[j]] <- input
-        #  }
-        #}
-        bs_pw_glb <- list()
-        for(i in 1:ncol(pw)){
-          if(fst == TRUE){
-            bs_pw_glb[[i]] <- matrix(rep(0, (8*bstrps)), ncol = 8,
-                                     nrow = bstrps)
-          } else {
-            bs_pw_glb[[i]] <- matrix(rep(0, (6*bstrps)), ncol = 6, 
-                                     nrow = bstrps)
-          }
-        }
-        #create a readGenepopX list
-        bs_pw_glb <- list()
-        data_res <- list()
-        bs_pw_para <- list()
-        for(i in 1:ncol(pw)){
-          input <- list(infile = pw_data[[i]],
-                        gp = gp, bootstrap = TRUE,
-                        locs = FALSE, fst = fst)
-          # silence for memory efficiency
-          #pw_inlist <- list()
-          #for(j in 1:bstrps){
-          #  pw_inlist[[j]] <- input
-          #}
-          if(fst == TRUE){
-            bs_pw_glb[[i]] <- matrix(rep(0, (8*bstrps)), ncol = 8,
-                                     nrow = bstrps)
-          } else {
-            bs_pw_glb[[i]] <- matrix(rep(0, (6*bstrps)), ncol = 6,
-                                     nrow = bstrps)
-          }
-          bs_pw_para <- lapply(1:bstrps, function(...){
-            pre.divLowMemory(input)
-          })
-          for(j in 1:bstrps){
-            if(fst == TRUE){
-              bs_pw_glb[[i]][j,] <- c(bs_pw_para[[j]]$gst_all,
-                                      bs_pw_para[[j]]$gst_all_hedrick,
-                                      bs_pw_para[[j]]$djost_all,
-                                      bs_pw_para[[j]]$gst_est_all,
-                                      bs_pw_para[[j]]$gst_est_all_hedrick,
-                                      bs_pw_para[[j]]$djost_est_all,
-                                      as.numeric(bs_pw_para[[j]]$fstat[2:3]))
-              
-            } else {
-              bs_pw_glb[[i]][j,] <- c(bs_pw_para[[j]]$gst_all,
-                                      bs_pw_para[[j]]$gst_all_hedrick,
-                                      bs_pw_para[[j]]$djost_all,
-                                      bs_pw_para[[j]]$gst_est_all,
-                                      bs_pw_para[[j]]$gst_est_all_hedrick,
-                                      bs_pw_para[[j]]$djost_est_all)
-              
-            }
-          }
-        } 
-        # confidence interval calculator function
-        pwCi <- lapply(bs_pw_glb, function(x){
-          res <- apply(x, 2, function(y){
-            ci <- as.vector(quantile(y, probs = c(0.025, 0.975), na.rm = TRUE))
-            means <- mean(y, na.rm = TRUE)
-            return(c(means, ci))
-          })
-          mu <- res[1,]
-          lci <- res[2,]
-          uci <- res[3,]
-          list(mu = mu, lci = lci, uci = uci)
+        pwBsStat <- lapply(1:bstrps, function(...){
+          return(pwCalc(D, fst, bs = TRUE))
         })
-        # create easy access data structure for each
-        mu <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$mu)
-        }))
-        lci <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$lci)
-        }))
-        uci <- t(sapply(1:length(pwCi), function(i){
-          return(pwCi[[i]]$uci)
-        }))
+      }
+      # seperate each stat
+      
+      gstEst <- lapply(pwBsStat, function(x){
+        x[,,1]
+      })
+      
+      gstEstHed <- lapply(pwBsStat, function(x){
+        x[,,2]
+      })
+      
+      dEst <- lapply(pwBsStat, function(x){
+        x[,,3]
+      })
+      
+      if(fst){
+        theta <- lapply(pwBsStat, function(x){
+          x[,,4]
+        })
+      }
+      
+      # tidy up
+      rm(pwBsStat)
+      z <- gc()
+      rm(z)
+      
+      # convert bs lists to arrays for calculations
+      if(fst){
+        stats <- list(gstEst = array(unlist(gstEst),
+                                     dim = c(nrow(gstEst[[1]]),
+                                             nrow(gstEst[[1]]),
+                                             bstrps)),
+                      gstEstHed = array(unlist(gstEstHed),
+                                        dim = c(nrow(gstEstHed[[1]]),
+                                                nrow(gstEstHed[[1]]),
+                                                bstrps)),
+                      dEst = array(unlist(dEst),
+                                   dim = c(nrow(dEst[[1]]),
+                                           nrow(dEst[[1]]),
+                                           bstrps)),
+                      theta = array(unlist(theta),
+                                    dim = c(nrow(theta[[1]]),
+                                            nrow(theta[[1]]),
+                                            bstrps)))
         
+      } else {
+        stats <- list(gstEst = array(unlist(gstEst),
+                                     dim = c(nrow(gstEst[[1]]),
+                                             nrow(gstEst[[1]]),
+                                             bstrps)),
+                      gstEstHed = array(unlist(gstEstHed),
+                                        dim = c(nrow(gstEstHed[[1]]),
+                                                nrow(gstEstHed[[1]]),
+                                                bstrps)),
+                      dEst = array(unlist(dEst),
+                                   dim = c(nrow(dEst[[1]]),
+                                           nrow(dEst[[1]]),
+                                           bstrps)))
+      }
+      # tidy up
+      if(fst){
+        rm(dEst, gstEst, gstEstHed, theta)
+        z <- gc()
+        rm(z) 
+      } else {
+        # tidy up
+        rm(dEst, gstEst, gstEstHed)
+        z <- gc()
+        rm(z) 
+      }
+      
+      # organise data
+      # calculate the upper and lower 95% ci
+      lowCI <- lapply(stats, function(x){
+        return(apply(x, c(1,2), quantile, probs = 0.025, na.rm = TRUE))
+      })
+      
+      upCI <- lapply(stats, function(x){
+        return(apply(x, c(1,2), quantile, probs = 0.975, na.rm = TRUE))
+      })
+      
+      statMean <- lapply(stats, function(x){
+        return(apply(x, c(1,2), mean, na.rm = TRUE))
+      })
+      
+      # tidy up
+      rm(stats)
+      z <- gc()
+      rm(z)
+      
+      # organize ci and mean into output structure
+      pw <- combn(ncol(lowCI[[1]]), 2)
+      outOrg <- function(x, y, z, pw, pwNms){
+        out <- matrix(ncol = 3, nrow = ncol(pw))
+        colnames(out) <- c("mean", "Lower_95%CI", "Upper_95%CI")
+        rownames(out) <- pwNms
         for(i in 1:ncol(pw)){
-          for(j in 1:ncol(mu)){
-            pw_res[[j]][i, 1] <- round(mu[i, j], 4)
-            pw_res[[j]][i, 2] <- round(lci[i, j], 4)
-            pw_res[[j]][i, 3] <- round(uci[i, j], 4)
-            pw_res[[j]][is.na(pw_res[[j]])] <- 0
-          }
+          idx <- as.vector(rev(pw[,i]))
+          out[i,] <- c(y[idx[1], idx[2]], x[idx[1], idx[2]], z[idx[1], idx[2]])
         }
-        #
+        
+        return(out)
       }
-      #
-      # pairwise comparisons
-      # pw_names = pairwise population names
-      pw_nms <- paste(accDat$pop_names[pw[1,]],
-                      accDat$pop_names[pw[2,]], sep = " vs. ")
-      #
-      pw_nms1 <- paste(pw[1,], pw[2,], sep = " vs. ")
-      #
-      names(pw_res) <- namer
-      #
-      pw_res1 <- pw_res
-      if(fst == TRUE){
-        for(i in 1:8){
-          dimnames(pw_res1[[i]]) <- list(pw_nms, 
-                                         c("Mean", "Lower_CI", "Upper_CI"))
-        }
+      outputStat <- mapply(FUN = outOrg, lowCI, statMean, upCI, 
+                           MoreArgs = list(pw = pw, pwNms = pw_nms),
+                           SIMPLIFY = FALSE)
+      
+      pw_res <- outputStat
+      if(fst){
+        names(pw_res) <- c("gstEst", "gstEstHed", "djostEst", "thetaWC")
       } else {
-        for(i in 1:6){
-          dimnames(pw_res1[[i]]) <- list(pw_nms, 
-                                         c("Mean", "Lower_CI", "Upper_CI"))
-        }
+        names(pw_res) <- c("gstEst", "gstEstHed", "djostEst")
       }
-      # bs results output object header
-      hdr <- matrix(c("Pairwise", "Mean", "Lower_95%CI", "Upper_95%CI"),
-                    ncol = 4)
-      pw_bs_out <- matrix(rbind(hdr, c(names(pw_res)[1],"" ,"" ,""),
-                                cbind(pw_nms, pw_res[[1]])), ncol = 4)
-      if(fst == TRUE){
-        for(i in 2:8){
-          pw_bs_out <- matrix(rbind(pw_bs_out, c(names(pw_res)[i], "", "", ""),
-                                    cbind(pw_nms, pw_res[[i]])), ncol = 4)
-        }
-      } else {
-        for(i in 2:6){
-          pw_bs_out <- matrix(rbind(pw_bs_out, c(names(pw_res)[i], "", "", ""),
-                                    cbind(pw_nms, pw_res[[i]])), ncol = 4)
-        }
-      }
+      
+      # define pwWrite for output
+      sprt <- lapply(names(pw_res), FUN = `c`, c("", "", ""))
+      pwWrite <- lapply(pw_res, function(x){
+        comparison <- rownames(x)
+        cols <- colnames(x)
+        rownames(x) <- NULL
+        out <- cbind(comparison, round(x, 4))
+        out <- rbind(colnames(out), out)
+        colnames(out) <- NULL
+        return(out)
+      })
+      pwWrite <- mapply(FUN = "rbind", sprt, pwWrite, SIMPLIFY = FALSE)
+      pwWrite <- do.call("rbind", pwWrite)
+      # write results
       if(!is.null(on)){
         if(write_res==TRUE){
-          write.xlsx(pw_bs_out,file=paste(of,"[divPart].xlsx",sep=""),
-                     sheetName="Pairwise_bootstrap",col.names=F,
-                     row.names=F,append=T)
+          write.xlsx(pwWrite, file = paste(of, "[divPart].xlsx", sep = ""),
+                     sheetName = "Pairwise_bootstrap", col.names = FALSE,
+                     row.names = FALSE, append = TRUE)
         } else {
           # text file alternatives
-          pw_bts<-file(paste(of,"Pairwise-bootstrap[divPart].txt",sep=""), "w")
-          cat(paste(colnames(pw_bs_out),sep=""),"\n",sep="\t",file=pw_bts)
-          for(i in 1:nrow(pw_bs_out)){
-            cat(pw_bs_out[i,],"\n",file=pw_bts,sep="\t")
+          pw_bts <- file(paste(of, "Pairwise-bootstrap[divPart].txt", sep = ""),
+                         "w")
+          #cat(paste(colnames(pw_bs_out),sep=""),"\n",sep="\t",file=pw_bts)
+          for(i in 1:nrow(pwWrite)){
+            cat(pwWrite[i,], "\n", file = pw_bts, sep = "\t")
           }
           close(pw_bts)
         }
-      }
+      } 
     }
     zzz<-gc()
     rm(zzz)
     ############################################################################
     #pw plotter
     if(plot_res==TRUE && plt==TRUE && bspw==TRUE){
-      pwso<-list()
+      pwso <- list()
       for(i in 1:length(pw_res)){
-        pwso[[i]]<-order(pw_res[[i]][,1],decreasing=F)
+        pwso[[i]] <- order(pw_res[[i]][, 1], decreasing = FALSE)
         #if(length(pwso[[i]]) >= 100){
         #  pwso[[i]]<-pwso[[i]][(length(pwso[[i]])-99):length(pwso[[i]])]
         #}
       }
-      names(pwso)<-namer
+      if(fst){
+        names(pwso) <- namer[-c(1:3, length(namer))]
+      } else {
+        names(pwso) <- namer[-(1:3)]
+      }
+      
       # define plot parameters 
       plot.call_pw<-list()
       plot.extras_pw<-list()
@@ -1054,103 +873,103 @@ divPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
       fn_pre_pw<-list()
       direct=of
       #Plot Gst_Nei
-      plot.call_pw[[1]]=c("plot(pw_res[[4]][pwso[[4]],1],
-                          ylim=c(0,(max(pw_res[[4]][,3])+
-                          min(pw_res[[4]][,3]))),xaxt='n',
-                          ylab=names(pw_res)[4],type='n',
+      plot.call_pw[[1]]=c("plot(pw_res[[1]][pwso[[1]],1],
+                          ylim=c(0,(max(pw_res[[1]][,3])+
+                          min(pw_res[[1]][,3]))),xaxt='n',
+                          ylab=names(pw_res)[1],type='n',
                           xlab='Pairwise comparisons 
                           \n (Hover over a point to see pairwise info.)',
                           cex.lab=1.2,cex.axis=1.3,las=1)")
       
-      plot.extras_pw[[1]]=c("points(pw_res[[4]][pwso[[4]],1],
+      plot.extras_pw[[1]]=c("points(pw_res[[1]][pwso[[1]],1],
                             pch=15,col='black',cex=1);
-                            arrows(1:length(pwso[[4]]),pw_res[[4]][pwso[[4]],2],
-                            1:length(pwso[[4]]),pw_res[[4]][pwso[[4]],3],code=3,
+                            arrows(1:length(pwso[[1]]),pw_res[[1]][pwso[[1]],2],
+                            1:length(pwso[[1]]),pw_res[[1]][pwso[[1]],3],code=3,
                             angle=90,length=0.05,lwd=0.1);
                             abline(h=as.numeric(plot_data321[5]),
                             lwd=1,lty=2,col='red')")
       
-      xy.labels_pw[[1]]=data.frame(pairwise_name=pw_nms[pwso[[4]]],
-                                   Gst_Nei=round(pw_res[[4]][pwso[[4]],1],4),
-                                   Gst_Hedrick=round(pw_res[[5]][pwso[[4]],1],4),
-                                   D_jost=round(pw_res[[6]][pwso[[4]],1],4))
+      xy.labels_pw[[1]] = data.frame(pairwise_name = pw_nms[pwso[[1]]],
+                                     Gst_Nei = round(pw_res[[1]][pwso[[1]], 1],4),
+                                   Gst_Hedrick = round(pw_res[[2]][pwso[[1]], 1],4),
+                                   D_jost = round(pw_res[[3]][pwso[[1]], 1],4))
       
-      y.pos_pw[[1]]=pw_res[[4]][pwso[[4]],1]
-      fn_pre_pw[[1]]<-names(pw_res)[4]
+      y.pos_pw[[1]] = pw_res[[1]][pwso[[1]], 1]
+      fn_pre_pw[[1]] <- names(pw_res)[1]
       
       
       
       # Plot Gst_Hedrick
-      plot.call_pw[[2]]=c("plot(pw_res[[5]][pwso[[5]],1],
-                          ylim=c(0,1),xaxt='n',ylab=names(pw_res)[5],type='n',
+      plot.call_pw[[2]]=c("plot(pw_res[[2]][pwso[[2]],1],
+                          ylim=c(0,1),xaxt='n',ylab=names(pw_res)[2],type='n',
                           xlab='Pairwise comparisons
                           \n (Hover over a point to see pairwise info.)',
                           cex.lab=1.2,cex.axis=1.3,las=1)")
       
-      plot.extras_pw[[2]]=c("points(pw_res[[5]][pwso[[5]],1],
+      plot.extras_pw[[2]]=c("points(pw_res[[2]][pwso[[2]],1],
                             pch=15,col='black',cex=1);
-                            arrows(1:length(pwso[[5]]),pw_res[[5]][pwso[[5]],2],
-                            1:length(pwso[[5]]),pw_res[[5]][pwso[[5]],3],code=3,
+                            arrows(1:length(pwso[[2]]),pw_res[[2]][pwso[[2]],2],
+                            1:length(pwso[[2]]),pw_res[[2]][pwso[[2]],3],code=3,
                             angle=90,length=0.05,lwd=0.1);
                             abline(h=as.numeric(plot_data321[6]),
                             lwd=1,lty=2,col='red')")
       
-      xy.labels_pw[[2]]=data.frame(pairwise_name=pw_nms[pwso[[5]]],
-                                   Gst_Nei=round(pw_res[[4]][pwso[[5]],1],4),
-                                   Gst_Hedrick=round(pw_res[[5]][pwso[[5]],1],4),
-                                   D_jost=round(pw_res[[6]][pwso[[5]],1],4))
+      xy.labels_pw[[2]] = data.frame(pairwise_name = pw_nms[pwso[[2]]],
+                                     Gst_Nei = round(pw_res[[1]][pwso[[2]],1],4),
+                                     Gst_Hedrick = round(pw_res[[2]][pwso[[2]],1],4),
+                                     D_jost = round(pw_res[[3]][pwso[[2]],1],4))
       
-      y.pos_pw[[2]]=pw_res[[5]][pwso[[5]],1]
-      fn_pre_pw[[2]]<-names(pw_res)[5]
+      y.pos_pw[[2]] = pw_res[[2]][pwso[[2]],1]
+      fn_pre_pw[[2]] <- names(pw_res)[2]
       
       
       # Plot D_jost
-      plot.call_pw[[3]]=c("plot(pw_res[[6]][pwso[[6]],1],
-                          ylim=c(0,1),xaxt='n',ylab=names(pw_res)[6],type='n',
+      plot.call_pw[[3]]=c("plot(pw_res[[3]][pwso[[3]],1],
+                          ylim=c(0,1),xaxt='n',ylab=names(pw_res)[3],type='n',
                           xlab='Pairwise comparisons 
                           \n (Hover over a point to see pairwise info.)',
                           cex.lab=1.2,cex.axis=1.3,las=1)")
       
-      plot.extras_pw[[3]]=c("points(pw_res[[6]][pwso[[6]],1],
+      plot.extras_pw[[3]]=c("points(pw_res[[3]][pwso[[3]],1],
                             pch=15,col='black',cex=1);
-                            arrows(1:length(pwso[[6]]),pw_res[[6]][pwso[[6]],2],
-                            1:length(pwso[[6]]),pw_res[[6]][pwso[[6]],3],code=3,
+                            arrows(1:length(pwso[[3]]),pw_res[[3]][pwso[[3]],2],
+                            1:length(pwso[[3]]),pw_res[[3]][pwso[[3]],3],code=3,
                             angle=90,length=0.05,lwd=0.1);
                             abline(h=as.numeric(plot_data321[7]),
                             lwd=1,lty=2,col='red')")
       
-      xy.labels_pw[[3]]=data.frame(pairwise_name=pw_nms[pwso[[6]]],
-                                   Gst_Nei=round(pw_res[[4]][pwso[[6]],1],4),
-                                   Gst_Hedrick=round(pw_res[[5]][pwso[[6]],1],4),
-                                   D_jost=round(pw_res[[6]][pwso[[6]],1],4))
+      xy.labels_pw[[3]]=data.frame(pairwise_name=pw_nms[pwso[[3]]],
+                                   Gst_Nei=round(pw_res[[1]][pwso[[3]],1],4),
+                                   Gst_Hedrick=round(pw_res[[2]][pwso[[3]],1],4),
+                                   D_jost=round(pw_res[[3]][pwso[[3]],1],4))
       
-      y.pos_pw[[3]]=pw_res[[6]][pwso[[6]],1]
-      fn_pre_pw[[3]]<-names(pw_res)[6]
+      y.pos_pw[[3]]=pw_res[[3]][pwso[[3]],1]
+      fn_pre_pw[[3]]<-names(pw_res)[3]
       #plot(Fst_WC)
       if(fst==TRUE){
-        plot.call_pw[[4]]=c("plot(pw_res[[8]][pwso[[8]],1],
-                            ylim=c(0,(max(pw_res[[8]][,3])+
-                            min(pw_res[[8]][,3]))),xaxt='n',ylab=names(pw_res)[8],type='n',
+        plot.call_pw[[4]]=c("plot(pw_res[[4]][pwso[[4]],1],
+                            ylim=c(0,(max(pw_res[[4]][,3])+
+                            min(pw_res[[4]][,3]))),xaxt='n',ylab=names(pw_res)[4],type='n',
                             xlab='Pairwise comparisons 
                             \n (Hover over a point to see pairwise info.)',
                             cex.lab=1.2,cex.axis=1.3,las=1)")
         
-        plot.extras_pw[[4]]=c("points(pw_res[[8]][pwso[[8]],1],
+        plot.extras_pw[[4]]=c("points(pw_res[[4]][pwso[[4]],1],
                               pch=15,col='black',cex=1);
-                              arrows(1:length(pwso[[8]]),pw_res[[8]][pwso[[8]],2],
-                              1:length(pwso[[8]]),pw_res[[8]][pwso[[8]],3],code=3,
+                              arrows(1:length(pwso[[4]]),pw_res[[4]][pwso[[4]],2],
+                              1:length(pwso[[4]]),pw_res[[4]][pwso[[4]],3],code=3,
                               angle=90,length=0.05,lwd=0.1);
                               abline(h=as.numeric(plot_data321[7]),
                               lwd=1,lty=2,col='red')")
         
-        xy.labels_pw[[4]]=data.frame(pairwise_name=pw_nms[pwso[[8]]],
-                                     Gst_Nei=round(pw_res[[4]][pwso[[8]],1],4),
-                                     Gst_Hedrick=round(pw_res[[5]][pwso[[8]],1],4),
-                                     D_jost=round(pw_res[[6]][pwso[[8]],1],4),
-                                     Fst_WC=round(pw_res[[8]][pwso[[8]],1],4))
+        xy.labels_pw[[4]]=data.frame(pairwise_name=pw_nms[pwso[[4]]],
+                                     Gst_Nei=round(pw_res[[1]][pwso[[4]],1],4),
+                                     Gst_Hedrick=round(pw_res[[2]][pwso[[4]],1],4),
+                                     D_jost=round(pw_res[[3]][pwso[[4]],1],4),
+                                     Fst_WC=round(pw_res[[4]][pwso[[4]],1],4))
         
-        y.pos_pw[[4]]=pw_res[[8]][pwso[[8]],1]
-        fn_pre_pw[[4]]<-names(pw_res)[8]
+        y.pos_pw[[4]]=pw_res[[4]][pwso[[4]],1]
+        fn_pre_pw[[4]]<-names(pw_res)[4]
       }
     }
     ############################### Bootstrap end ################################

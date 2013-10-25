@@ -1306,11 +1306,18 @@ div.part<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
 # readGenepopX, a function for the generation of basic population parameters   #
 ################################################################################
 readGenepopX <- function (x) {
-  gp=x$gp
   infile=x$infile
   bootstrap=x$bootstrap
   locs=x$locs
   data1 <- fileReader(infile)
+  if(is.null(x$gp)){
+    rownames(data1) <- NULL
+    data1 <- as.matrix(data1)
+    p1 <- which(toupper(data1[,1]) == "POP")[1] + 1
+    gp <- as.numeric(names(sort(-table(sapply(data1[p1, - 1], nchar)/2)))[1])
+  } else {
+    gp=x$gp
+  }  
   if(gp == 3){
     data1[data1==0]<-NA
     data1[data1=="999999"]<-NA
@@ -3115,6 +3122,7 @@ readGenepop <- function (infile=NULL, gp=3, bootstrap=FALSE) {
 # pre.divLowMemory, a low memory consumption function for locus bootstrapping  #
 ################################################################################
 pre.divLowMemory <- function(y){
+  #y <- gp_inls
   locs <- y$locs
   fst <- y$fst
   min <- y$min
@@ -3455,6 +3463,11 @@ pre.divLowMemory <- function(y){
     # fstWC: a function co calculate weir and cockerhams fis, fit, and fst
     ##########################################################################
     fstWC<-function(x){
+#       y <- list(infile = "KK_test-1v2.gen", gp = 3,
+#                 bootstrap = FALSE, 
+#                 locs = TRUE, fst = TRUE)
+#       x <- diveRsity:::readGenepopX(y)
+#       x$gp <- 3
       badData <- sapply(x$indtyp, function(y){
         is.element(0, y)
       })
@@ -3546,10 +3559,13 @@ pre.divLowMemory <- function(y){
       a<-vector()
       b<-vector()
       c<-vector()
+  
+      
       for(i in 1:ncol(all_genot)){
         kknbar<-indtyp_tot[[gdData[i]]]/x$npops
         kknC<-(indtyp_tot[[gdData[i]]]-sum(x$indtyp[[gdData[i]]]^2)/
                  indtyp_tot[[gdData[i]]])/(x$npops-1)
+        #nC <- c(nC, kknC)
         kkptild<-kk_p[[i]]/(2*x$indtyp[[gdData[i]]])
         kkptild[kkptild=="NaN"]<-NA
         kkpbar<-colSums(kk_p[[i]])/(2*indtyp_tot[[gdData[i]]])
@@ -7807,44 +7823,46 @@ pwHarmonic <- function(lss, pw){
 # pwFstWC: a function co calculate weir and cockerhams fis, fit, and fst
 ##########################################################################
 pwFstWC<-function(rdat){
+  #   rdat <- diveRsity::readGenepop("KK_test1v2.gen")
   pw <- combn(rdat$npops, 2)
-  # account for loci with missing info for pops
-  pwBadData <- function(indtyp, pw){
-    out <- sapply(1:ncol(pw), function(i){
-      is.element(0, indtyp[pw[,i]])
-    })
-  }
-  badDat <- sapply(rdat$indtyp, pwBadData, pw = pw)
-  if(any(badDat)){
-    bd <- TRUE
-  }
-  # determine the number of loci per pw comparison
-  nlocPw <- apply(badDat, 1, function(x){
-    if(sum(x) > 0){
-      nl <- rdat$nloci - sum(x)
-    } else {
-      nl <- rdat$nloci
-    }
-  })
-  # define all good data
-  gdDat <- lapply(1:nrow(badDat), function(i){
-    which(!badDat[i,])
-  })
-  badDat <- lapply(1:nrow(badDat), function(i){
-    which(badDat[i,])
-  })
+  #   # account for loci with missing info for pops
+  #   pwBadData <- function(indtyp, pw){
+  #     out <- sapply(1:ncol(pw), function(i){
+  #       is.element(0, indtyp[pw[,i]])
+  #     })
+  #   }
+  #   badDat <- sapply(rdat$indtyp, pwBadData, pw = pw)
+  #   if(any(badDat)){
+  #     bd <- TRUE
+  #   }
+  #   # determine the number of loci per pw comparison
+  #   nlocPw <- apply(badDat, 1, function(x){
+  #     if(sum(x) > 0){
+  #       nl <- rdat$nloci - sum(x)
+  #     } else {
+  #       nl <- rdat$nloci
+  #     }
+  #   })
+  #   # define all good data
+  #   gdDat <- lapply(1:nrow(badDat), function(i){
+  #     which(!badDat[i,])
+  #   })
+  #   badDat <- lapply(1:nrow(badDat), function(i){
+  #     which(badDat[i,])
+  #   })
   # get all genotypes for each pw comparison
   allGenot <- apply(pw, 2, function(x){
-    return(rdat$pop_list[x])
+    list(rdat$pop_list[[x[1]]], 
+         rdat$pop_list[[x[2]]])
   })
-  # filter bad data
-  if(any(nlocPw != rdat$nloci)){
-    idx <- which(nlocPw != rdat$nloci)
-    for(i in idx){
-      allGenot[[i]][[1]] <- allGenot[[i]][[1]][, gdDat[[i]]]
-      allGenot[[i]][[2]] <- allGenot[[i]][[2]][, gdDat[[i]]]
-    }
-  }
+  #   # filter bad data
+  #   if(any(nlocPw != rdat$nloci)){
+  #     idx <- which(nlocPw != rdat$nloci)
+  #     for(i in idx){
+  #       allGenot[[i]][[1]] <- allGenot[[i]][[1]][, gdDat[[i]]]
+  #       allGenot[[i]][[2]] <- allGenot[[i]][[2]][, gdDat[[i]]]
+  #     }
+  #   }
   # unlist pw genotype data
   allGenot <- lapply(allGenot, function(x){
     return(do.call("rbind", x))
@@ -7878,7 +7896,14 @@ pwFstWC<-function(rdat){
     out <- lapply(x, htCount)
   })
   
-  
+  #   if(bd){
+  #     # insert na for missing loci
+  #     hSum <- lapply(seq_along(badDat), function(i){
+  #       naPos <- badDat[[i]]
+  #       idx <- c(seq_along(hSum[[i]]), (naPos - 0.5))
+  #       return(c(hSum[[i]], rep(NA, length(naPos)))[order(idx)])
+  #     }) 
+  #   }
   # convert to locus orientated hSum
   hSum <- lapply(seq_along(hSum[[1]]), function(i){
     lapply(hSum, "[[", i)
@@ -7912,7 +7937,22 @@ pwFstWC<-function(rdat){
               MoreArgs = list(pw = pw), 
               SIMPLIFY = FALSE)
   
+  #   # convert p elements into array structure
+  #   pArr <- lapply(p, function(x){
+  #     d3 <- length(x)
+  #     d2 <- 2
+  #     d1 <- nrow(x[[1]])
+  #     return(array(unlist(x), dim = c(d1, d2, d3)))
+  #   })
+  
   fstatCal <- function(indT, indtyp, hBar, nBar, p, pw, npops){
+    #     indT=indTypTot[[28]]
+    #     indtyp=rdat$indtyp[[28]]
+    #     hBar <- hBar[[28]]
+    #     nBar <- nBar[[28]]
+    #     p <- p[[28]]
+    #     pw <- pw
+    #     npops <- rdat$npops
     indLocPwSqSum <- sapply(seq_along(pw[1,]), function(i){
       return(sum(indtyp[pw[,i]]^2))
     })
@@ -7953,10 +7993,10 @@ pwFstWC<-function(rdat){
     a <- lapply(seq_along(s2), function(i){
       return(nBar[[i]]*(s2[[i]]-(A[[i]]-(hBar[[i]]/4))/(nBar[[i]]-1))/nC[[i]])
     })
-    b <- sapply(seq_along(A), function(i){
+    b <- lapply(seq_along(A), function(i){
       return(nBar[[i]]*(A[[i]]-(2*(nBar[[i]]-1))*hBar[[i]]/(4*nBar[[i]]))/(nBar[[i]]-1))
-    })  
-    c <- sapply(seq_along(A), function(i){
+    })
+    c <- lapply(seq_along(A), function(i){
       return(hBar[[i]]/2)
     })
     A <- sapply(A, sum)
@@ -7974,6 +8014,11 @@ pwFstWC<-function(rdat){
       bMat[pw[2,i], pw[1,i]] <- b[i]
       cMat[pw[2,i], pw[1,i]] <- c[i]
     }
+    pwMat[is.nan(pwMat)] <- NA
+    aMat[is.nan(aMat)] <- NA
+    cMat[is.nan(bMat)] <- NA
+    bMat[is.nan(bMat)] <- NA
+    
     list(pwMat, aMat, bMat, cMat)
   }
   
