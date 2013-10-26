@@ -236,6 +236,8 @@ divPartNew<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
         bs_loc <- parLapply(cl, 1:bstrps, function(...){
           pre.divLowMemory(gp_inls)
         })
+        # close the cluster connection
+        stopCluster(cl)
         
         
         #vectorize data extraction#

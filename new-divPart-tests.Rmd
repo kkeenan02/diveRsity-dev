@@ -1,0 +1,121 @@
+Testing the new divPart function
+========================================================
+```{r, echo=FALSE}
+opts_chunk$set(comment = "",
+               tidy = FALSE)
+```
+### Introduction
+The `divPart` function in `diveRsity` has been rewritten to make use of more efficient computational techniques. Below is a documentation of the various timing and calculation accuracy tests carried out.
+
+#### load old and new functions
+```{r}
+# load all original function
+source("R/diveRsity-code.R")
+# load new divPart
+source("divPart-dev.R")
+```
+
+#### Test timing difference between parallel and non-parallel
+```{r speed-tstNew, cache=TRUE, fig.keep='none'}
+# without parallel 
+system.time({
+newResnp <- divPartNew(infile = "tst-files/KK_test.gen",
+                     outfile = "tst-files/New-no-para",
+                     parallel = FALSE, bs_locus = TRUE,
+                     bs_pairwise = TRUE, pairwise = TRUE,
+                     WC_Fst = TRUE, bootstraps = 10, plot = TRUE)
+})
+# with parallel
+system.time({
+newResp <- divPartNew(infile = "tst-files/KK_test.gen",
+                     outfile = "tst-files/New-para",
+                     parallel = TRUE, bs_locus = TRUE,
+                     bs_pairwise = TRUE, pairwise = TRUE,
+                     WC_Fst = TRUE, bootstraps = 10, plot = TRUE)
+})
+
+```
+
+#### Test if all the same files are returned
+```{r}
+# non-parallel files
+
+# html
+dir(path = "tst-files/New-no-para-[diveRsity]", 
+    pattern = "*.html") == dir(path = "tst-files/New-para-[diveRsity]/", 
+    pattern = "*.html")
+
+# xlsx
+dir(path = "tst-files/New-no-para-[diveRsity]", 
+    pattern = "*.xlsx") == dir(path = "tst-files/New-para-[diveRsity]/", 
+    pattern = "*.xlsx")
+
+# png
+dir(path = "tst-files/New-no-para-[diveRsity]", 
+    pattern = "*.png") == dir(path = "tst-files/New-para-[diveRsity]/", 
+    pattern = "*.png")
+```
+
+#### Old divPart function
+```{r speed-tstOld, cache=TRUE, fig.keep='none'}
+# without parallel 
+system.time({
+oldResnp <- divPart(infile = "tst-files/KK_test.gen",
+                    outfile = "tst-files/Old-no-para",
+                    parallel = FALSE, bs_locus = TRUE,
+                    bs_pairwise = TRUE, pairwise = TRUE,
+                    WC_Fst = TRUE, bootstraps = 10, plot = TRUE)
+})
+# with parallel
+system.time({
+oldResp <- divPart(infile = "tst-files/KK_test.gen",
+                   outfile = "tst-files/Old-para",
+                    parallel = TRUE, bs_locus = TRUE,
+                    bs_pairwise = TRUE, pairwise = TRUE,
+                    WC_Fst = TRUE, bootstraps = 10, plot = TRUE)
+})
+```
+
+#### Parallel bootstrapping, old and new
+A smaller data set than *KK_test.gen* will be used to test the speed of the new `divPart` function with the old function. Data will not be written to file, parallel processing will be used and 1000 bootstraps used.
+
+```{r oldvnew, cache=TRUE}
+# old function without WC_Fst
+system.time({
+spdtst1 <- divPart(infile = "tst-files/pw_test.gen",
+                   parallel = TRUE, bs_pairwise = TRUE, 
+                   pairwise = FALSE, WC_Fst = FALSE, 
+                   bootstraps = 1000)
+})
+
+# old function with WC_Fst
+system.time({
+spdtst2 <- divPart(infile = "tst-files/pw_test.gen",
+                   parallel = TRUE, bs_pairwise = TRUE, 
+                   pairwise = FALSE, WC_Fst = TRUE, 
+                   bootstraps = 1000)
+})
+
+# new function without WC_Fst
+system.time({
+spdtst3 <- divPartNew(infile = "tst-files/pw_test.gen",
+                      parallel = TRUE, bs_pairwise = TRUE, 
+                      pairwise = FALSE, WC_Fst = FALSE, 
+                      bootstraps = 1000)
+})
+
+# new function with WC_Fst
+system.time({
+spdtst4 <- divPartNew(infile = "tst-files/pw_test.gen",
+                      parallel = TRUE, bs_pairwise = TRUE, 
+                      pairwise = FALSE, WC_Fst = TRUE, 
+                      bootstraps = 1000)
+})
+```
+
+
+
+## Reproducibility
+```{r, echo=FALSE}
+print(sessionInfo(), locale = FALSE)
+```
