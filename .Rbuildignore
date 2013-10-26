@@ -1,2 +1,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+tst-files/
+.gitignore
+.Rbuildignore
