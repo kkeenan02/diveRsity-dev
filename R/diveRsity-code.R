@@ -1,6 +1,6 @@
 ################################################################################
 ################################################################################
-##                              diveRsity v1.5.7                              ##  
+##                              diveRsity v1.6.0                              ##  
 ##                            by Kevin Keenan QUB                             ##  
 ##            An R package for the calculation of differentiation             ##
 ##              statistics and locus informativeness statistics               ##  
