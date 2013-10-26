@@ -1,10 +1,6 @@
 .Rproj.user
 .Rhistory
 .RData
-vignettes/
-man/
-inst/
-data/
 *.Rproj
 *.html
 *.md
