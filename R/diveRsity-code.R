@@ -9362,7 +9362,7 @@ fastDivPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
         }
       }
       for(i in 1:length(pwMatListOut)){
-        dimnames(pwMatListOut) <- list(popNms, popNms)
+        dimnames(pwMatListOut[[i]]) <- list(popNms, popNms)
       }
     }
     
