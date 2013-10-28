@@ -9361,6 +9361,9 @@ fastDivPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
           close(std)
         }
       }
+      for(i in 1:length(pwMatListOut)){
+        dimnames(pwMatListOut) <- list(popNms, popNms)
+      }
     }
     
     #Bootstrap
