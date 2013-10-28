@@ -9317,6 +9317,8 @@ fastDivPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
                         cbind(popNms, round(thetaPW, 4)))
         outobj[is.na(outobj)] <- ""
         pwMatListOut <- list(gstPW, gstHPW, dPW, thetaPW)
+        # add names to pwMatListOut
+        names(pwMatListOut) <- c("gstEst", "gstEstHed", "djostEst", "thetaWC")
         # tidy up
         rm(gstPW, gstHPW, dPW, thetaPW)
         z <- gc()
@@ -9334,6 +9336,8 @@ fastDivPart<-function(infile = NULL, outfile = NULL, gp = 3, pairwise = FALSE,
                         cbind(popNms, round(dPW, 4)))
         outobj[is.na(outobj)] <- ""
         pwMatListOut <- list(gstPW, gstHPW, dPW)
+        # add names to pwMatListOut
+        names(pwMatListOut) <- c("gstEst", "gstEstHed", "djostEst")
         # tidy up
         rm(gstPW, gstHPW, dPW)
         z <- gc()
