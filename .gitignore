@@ -3,7 +3,7 @@
 .RData
 *.Rproj
 *.html
-*.md
+*.Rmd
 tst-files/
 figure/
 cache/
